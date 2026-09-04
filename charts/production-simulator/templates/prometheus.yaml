@@ -1,0 +1,90 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "production-simulator.fullname" . }}-prometheus
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 5s
+    scrape_configs:
+      - job_name: production-simulator
+        metrics_path: /metrics
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - {{ .Release.Namespace }}
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            action: keep
+            regex: production-simulator
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "production-simulator.fullname" . }}-prometheus
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "production-simulator.fullname" . }}-prometheus
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "production-simulator.fullname" . }}-prometheus
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "production-simulator.fullname" . }}-prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "production-simulator.fullname" . }}-prometheus
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "production-simulator.fullname" . }}-prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "production-simulator.name" . }}-prometheus
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "production-simulator.name" . }}-prometheus
+    spec:
+      serviceAccountName: {{ include "production-simulator.fullname" . }}-prometheus
+      containers:
+        - name: prometheus
+          image: {{ .Values.prometheus.image }}
+          args: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
+          ports:
+            - name: http
+              containerPort: 9090
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "production-simulator.fullname" . }}-prometheus
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "production-simulator.fullname" . }}-prometheus
+spec:
+  type: {{ .Values.prometheus.service.type }}
+  selector:
+    app.kubernetes.io/name: {{ include "production-simulator.name" . }}-prometheus
+  ports:
+    - name: http
+      port: {{ .Values.prometheus.service.port }}
+      targetPort: http
+      nodePort: {{ .Values.prometheus.service.nodePort }}

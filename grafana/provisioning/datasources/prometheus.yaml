@@ -1,0 +1,9 @@
+apiVersion: 1
+datasources:
+  - name: Local Kubernetes Prometheus
+    uid: local-k8s-prometheus
+    type: prometheus
+    access: proxy
+    url: http://host.docker.internal:19090
+    isDefault: true
+    editable: false

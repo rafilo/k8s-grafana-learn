@@ -1,0 +1,87 @@
+{
+  "uid": "production-simulator-overview",
+  "title": "Production Simulator — Kubernetes Overview",
+  "tags": ["kubernetes", "jvm", "demo"],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "10s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "local-k8s-prometheus" },
+      "targets": [{ "expr": "sum(rate(application_requests_total[1m]))", "legendFormat": "requests / second", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] }
+    },
+    {
+      "id": 2,
+      "title": "Error rate",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 4, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "local-k8s-prometheus" },
+      "targets": [{ "expr": "100 * sum(rate(application_errors_total[5m])) / clamp_min(sum(rate(application_requests_total[5m])), 0.001)", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "percent", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 3 }] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "orientation": "auto" }
+    },
+    {
+      "id": 3,
+      "title": "Average request latency",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 4, "x": 16, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "local-k8s-prometheus" },
+      "targets": [{ "expr": "sum(rate(application_request_duration_ms_sum[5m])) / clamp_min(sum(rate(application_request_duration_ms_count[5m])), 0.001)", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "ms", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "orange", "value": 150 }, { "color": "red", "value": 300 }] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    },
+    {
+      "id": 4,
+      "title": "Pods up",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 4, "x": 20, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "local-k8s-prometheus" },
+      "targets": [{ "expr": "sum(up{job=\"production-simulator\"})", "refId": "A" }],
+      "fieldConfig": { "defaults": { "decimals": 0, "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 2 }] } }, "overrides": [] },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false } }
+    },
+    {
+      "id": 5,
+      "title": "JVM heap used",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "local-k8s-prometheus" },
+      "targets": [{ "expr": "jvm_memory_heap_used_bytes", "legendFormat": "{{instance}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] }
+    },
+    {
+      "id": 6,
+      "title": "JVM process CPU",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "local-k8s-prometheus" },
+      "targets": [{ "expr": "100 * process_cpu_usage_ratio", "legendFormat": "{{instance}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "percent" }, "overrides": [] }
+    },
+    {
+      "id": 7,
+      "title": "JVM live threads",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "local-k8s-prometheus" },
+      "targets": [{ "expr": "jvm_threads_live", "legendFormat": "{{instance}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "decimals": 0 }, "overrides": [] }
+    },
+    {
+      "id": 8,
+      "title": "GC collection time",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "datasource": { "type": "prometheus", "uid": "local-k8s-prometheus" },
+      "targets": [{ "expr": "rate(jvm_gc_collection_time_ms[5m])", "legendFormat": "{{instance}} / {{collector}}", "refId": "A" }],
+      "fieldConfig": { "defaults": { "unit": "ms" }, "overrides": [] }
+    }
+  ]
+}
