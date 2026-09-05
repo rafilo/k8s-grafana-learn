@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "production-simulator.fullname" . }}-prometheus
+spec:
+  type: {{ .Values.prometheus.service.type }}
+  selector:
+    app.kubernetes.io/name: {{ include "production-simulator.name" . }}-prometheus
+  ports:
+    - name: http
+      port: {{ .Values.prometheus.service.port }}
+      targetPort: http
+      nodePort: {{ .Values.prometheus.service.nodePort }}

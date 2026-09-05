@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "production-simulator.fullname" . }}-prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "production-simulator.name" . }}-prometheus
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "production-simulator.name" . }}-prometheus
+      annotations:
+        checksum/prometheus-config: {{ include (print $.Template.BasePath "/prometheus-configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "production-simulator.fullname" . }}-prometheus
+      containers:
+        - name: prometheus
+          image: {{ .Values.prometheus.image }}
+          args: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
+          ports:
+            - name: http
+              containerPort: 9090
+          volumeMounts:
+            - name: config
+              mountPath: /etc/prometheus
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "production-simulator.fullname" . }}-prometheus

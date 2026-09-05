@@ -4,14 +4,14 @@ image:
   tag: local
   pullPolicy: IfNotPresent
 service:
-  type: NodePort
-  port: 8080
+  type: LoadBalancer
+  port: 18080
   nodePort: 30080
 prometheus:
   image: prom/prometheus:v3.5.0
   service:
-    type: NodePort
-    port: 9090
+    type: LoadBalancer
+    port: 19090
     nodePort: 30090
 resources:
   requests:
