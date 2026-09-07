@@ -1,11 +1,11 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: {{ include "production-simulator.fullname" . }}-prometheus-binding
+  name: {{ include "production-simulator.fullname" . }}-prometheus-pod-reader-binding
 subjects:
   - kind: ServiceAccount
-    name: {{ include "production-simulator.fullname" . }}-prometheus
+    name: {{ include "production-simulator.fullname" . }}-prometheus-sa
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
-  name: {{ include "production-simulator.fullname" . }}-prometheus-role
+  name: {{ include "production-simulator.fullname" . }}-prometheus-pod-reader

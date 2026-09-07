@@ -1,0 +1,156 @@
+{{- if .Values.kubernetesMetrics.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "production-simulator.fullname" . }}-ksm
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "production-simulator.fullname" . }}-ksm
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "persistentvolumeclaims"]
+    verbs: ["list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets"]
+    verbs: ["list", "watch"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "production-simulator.fullname" . }}-ksm
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "production-simulator.fullname" . }}-ksm
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "production-simulator.fullname" . }}-ksm
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Namespace }}-{{ include "production-simulator.fullname" . }}-ksm-nodes
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Namespace }}-{{ include "production-simulator.fullname" . }}-ksm-nodes
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "production-simulator.fullname" . }}-ksm
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Namespace }}-{{ include "production-simulator.fullname" . }}-ksm-nodes
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "production-simulator.fullname" . }}-kube-state-metrics
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "production-simulator.fullname" . }}-ksm
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "production-simulator.fullname" . }}-ksm
+    spec:
+      serviceAccountName: {{ include "production-simulator.fullname" . }}-ksm
+      nodeSelector:
+        kubernetes.io/os: linux
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kube-state-metrics
+          image: {{ .Values.kubernetesMetrics.kubeStateMetricsImage | quote }}
+          args:
+            - --port=8080
+            - --telemetry-port=8081
+            - --namespaces={{ .Release.Namespace }}
+            - --resources=pods,nodes,deployments,statefulsets,daemonsets,horizontalpodautoscalers,persistentvolumeclaims
+          ports:
+            - name: metrics
+              containerPort: 8080
+            - name: telemetry
+              containerPort: 8081
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: telemetry
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: metrics
+            initialDelaySeconds: 5
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "production-simulator.fullname" . }}-kube-state-metrics
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ include "production-simulator.fullname" . }}-ksm
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: metrics
+{{ if .Values.kubernetesMetrics.cadvisorEnabled }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Namespace }}-{{ include "production-simulator.fullname" . }}-prometheus-nodes
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes/proxy"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Namespace }}-{{ include "production-simulator.fullname" . }}-prometheus-nodes
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "production-simulator.fullname" . }}-prometheus-sa
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Namespace }}-{{ include "production-simulator.fullname" . }}-prometheus-nodes
+{{ end }}
+{{ end }}

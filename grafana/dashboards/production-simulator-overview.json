@@ -4,7 +4,7 @@
   "tags": ["kubernetes", "jvm", "demo"],
   "timezone": "browser",
   "schemaVersion": 41,
-  "version": 1,
+  "version": 2,
   "refresh": "10s",
   "time": { "from": "now-15m", "to": "now" },
   "panels": [
@@ -39,7 +39,8 @@
     },
     {
       "id": 4,
-      "title": "Pods up",
+      "title": "Application scrape targets up",
+      "description": "Prometheus scrape reachability, not Pod readiness. See Kubernetes Runtime Metrics for Ready state.",
       "type": "stat",
       "gridPos": { "h": 8, "w": 4, "x": 20, "y": 0 },
       "datasource": { "type": "prometheus", "uid": "local-k8s-prometheus" },

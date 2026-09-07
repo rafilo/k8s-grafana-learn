@@ -1,0 +1,687 @@
+{
+  "uid": "kubernetes-runtime-metrics",
+  "title": "Kubernetes Runtime Metrics",
+  "tags": [
+    "kubernetes",
+    "containers",
+    "banking"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 41,
+  "version": 1,
+  "refresh": "15s",
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "namespace",
+        "label": "Namespace",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "local-k8s-prometheus"
+        },
+        "query": "label_values(kube_pod_info{job=\"kube-state-metrics\"}, namespace)",
+        "refresh": 1,
+        "multi": false,
+        "includeAll": false,
+        "sort": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Monitoring targets up",
+      "description": "1 = scrape succeeds, 0 = scrape fails. Missing data is not a healthy zero.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "up{job=~\"kube-state-metrics|kubernetes-cadvisor\"}",
+          "legendFormat": "{{job}} / {{instance}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "title": "Pod readiness",
+      "description": "1 = Ready, 0 = not Ready.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "kube_pod_status_ready{job=\"kube-state-metrics\",namespace=~\"$namespace\",condition=\"true\"}",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "title": "Pod phases",
+      "description": "Count of Pods in each lifecycle phase.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (phase) (kube_pod_status_phase{job=\"kube-state-metrics\",namespace=~\"$namespace\"})",
+          "legendFormat": "{{phase}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "title": "Container restarts (15m)",
+      "description": "Counter increase; Prometheus extrapolation may produce fractional counts.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (pod, container) (increase(kube_pod_container_status_restarts_total{job=\"kube-state-metrics\",namespace=~\"$namespace\"}[15m]))",
+          "legendFormat": "{{pod}} / {{container}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "title": "Waiting containers",
+      "description": "Current waiting reason. A missing reason series does not imply exporter health.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "kube_pod_container_status_waiting_reason{job=\"kube-state-metrics\",namespace=~\"$namespace\",reason=~\"CrashLoopBackOff|ImagePullBackOff|ErrImagePull|ContainerCreating\"}",
+          "legendFormat": "{{pod}} / {{container}} / {{reason}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "title": "Last termination was OOMKilled",
+      "description": "Last termination reason, not an OOM event rate; may remain 1 after recovery.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "kube_pod_container_status_last_terminated_reason{job=\"kube-state-metrics\",namespace=~\"$namespace\",reason=\"OOMKilled\"}",
+          "legendFormat": "{{pod}} / {{container}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "title": "Container CPU usage / request / limit",
+      "description": "CPU cores; actual usage is separate from configured container requests and limits.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (namespace, pod, container) (rate(container_cpu_usage_seconds_total{job=\"kubernetes-cadvisor\",namespace=~\"$namespace\",container!=\"\",container!=\"POD\"}[5m]))",
+          "legendFormat": "{{pod}} / {{container}} used",
+          "refId": "A"
+        },
+        {
+          "expr": "max by (namespace, pod, container) (kube_pod_container_resource_requests{job=\"kube-state-metrics\",namespace=~\"$namespace\",resource=\"cpu\",unit=\"core\"})",
+          "legendFormat": "{{pod}} / {{container}} request",
+          "refId": "B"
+        },
+        {
+          "expr": "max by (namespace, pod, container) (kube_pod_container_resource_limits{job=\"kube-state-metrics\",namespace=~\"$namespace\",resource=\"cpu\",unit=\"core\"})",
+          "legendFormat": "{{pod}} / {{container}} limit",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cores",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "title": "Container memory / request / limit",
+      "description": "Container working set includes more than Java heap. Missing limits are not treated as zero capacity.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "max by (namespace, pod, container) (container_memory_working_set_bytes{job=\"kubernetes-cadvisor\",namespace=~\"$namespace\",container!=\"\",container!=\"POD\"})",
+          "legendFormat": "{{pod}} / {{container}} working set",
+          "refId": "A"
+        },
+        {
+          "expr": "max by (namespace, pod, container) (kube_pod_container_resource_requests{job=\"kube-state-metrics\",namespace=~\"$namespace\",resource=\"memory\",unit=\"byte\"})",
+          "legendFormat": "{{pod}} / {{container}} request",
+          "refId": "B"
+        },
+        {
+          "expr": "max by (namespace, pod, container) (kube_pod_container_resource_limits{job=\"kube-state-metrics\",namespace=~\"$namespace\",resource=\"memory\",unit=\"byte\"})",
+          "legendFormat": "{{pod}} / {{container}} limit",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "title": "CPU throttled periods",
+      "description": "Percentage of scheduling periods throttled, not percentage CPU time lost. Requires runtime support.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "100 * sum by (pod, container) (rate(container_cpu_cfs_throttled_periods_total{job=\"kubernetes-cadvisor\",namespace=~\"$namespace\",container!=\"\",container!=\"POD\"}[5m])) / sum by (pod, container) (rate(container_cpu_cfs_periods_total{job=\"kubernetes-cadvisor\",namespace=~\"$namespace\",container!=\"\",container!=\"POD\"}[5m]))",
+          "legendFormat": "{{pod}} / {{container}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "title": "Pod network throughput",
+      "description": "Uses Pod network namespace metrics, including sandbox series. Do not filter out the POD container for network metrics.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (pod) (rate(container_network_receive_bytes_total{job=\"kubernetes-cadvisor\",namespace=~\"$namespace\",pod!=\"\"}[5m]))",
+          "legendFormat": "{{pod}} receive",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (pod) (rate(container_network_transmit_bytes_total{job=\"kubernetes-cadvisor\",namespace=~\"$namespace\",pod!=\"\"}[5m]))",
+          "legendFormat": "{{pod}} transmit",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "Bps",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "title": "Pod network drops",
+      "description": "Interface drops per second, not end-to-end packet-loss percentage.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum by (pod) (rate(container_network_receive_packets_dropped_total{job=\"kubernetes-cadvisor\",namespace=~\"$namespace\",pod!=\"\"}[5m]))",
+          "legendFormat": "{{pod}} receive",
+          "refId": "A"
+        },
+        {
+          "expr": "sum by (pod) (rate(container_network_transmit_packets_dropped_total{job=\"kubernetes-cadvisor\",namespace=~\"$namespace\",pod!=\"\"}[5m]))",
+          "legendFormat": "{{pod}} transmit",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "pps",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 12,
+      "title": "Deployment desired / available replicas",
+      "description": "Compare available replicas against the desired count.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "kube_deployment_spec_replicas{job=\"kube-state-metrics\",namespace=~\"$namespace\"}",
+          "legendFormat": "{{deployment}} desired",
+          "refId": "A"
+        },
+        {
+          "expr": "kube_deployment_status_replicas_available{job=\"kube-state-metrics\",namespace=~\"$namespace\"}",
+          "legendFormat": "{{deployment}} available",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 13,
+      "title": "Node Ready (cluster)",
+      "description": "Cluster-wide node condition; independent of namespace selection.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 48
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "kube_node_status_condition{job=\"kube-state-metrics\",condition=\"Ready\",status=\"true\"}",
+          "legendFormat": "{{node}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 14,
+      "title": "Node pressure (cluster)",
+      "description": "1 indicates pressure, 0 means condition absent; independent of namespace selection.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 48
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "kube_node_status_condition{job=\"kube-state-metrics\",condition=~\"MemoryPressure|DiskPressure|PIDPressure\",status=\"true\"}",
+          "legendFormat": "{{node}} / {{condition}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 15,
+      "title": "Node allocatable CPU (cluster)",
+      "description": "Capacity available to Pods, not current CPU utilization.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 56
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "kube_node_status_allocatable{job=\"kube-state-metrics\",resource=\"cpu\",unit=\"core\"}",
+          "legendFormat": "{{node}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "cores",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 16,
+      "title": "Node allocatable memory (cluster)",
+      "description": "Capacity available to Pods, not current host memory usage.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 56
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "kube_node_status_allocatable{job=\"kube-state-metrics\",resource=\"memory\",unit=\"byte\"}",
+          "legendFormat": "{{node}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 17,
+      "title": "HPA current / desired replicas",
+      "description": "No data if this namespace has no HPA.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 64
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "kube_horizontalpodautoscaler_status_current_replicas{job=\"kube-state-metrics\",namespace=~\"$namespace\"}",
+          "legendFormat": "{{horizontalpodautoscaler}} current",
+          "refId": "A"
+        },
+        {
+          "expr": "kube_horizontalpodautoscaler_status_desired_replicas{job=\"kube-state-metrics\",namespace=~\"$namespace\"}",
+          "legendFormat": "{{horizontalpodautoscaler}} desired",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 18,
+      "title": "PVC phases",
+      "description": "No data if this namespace has no PVC. Phase is not disk usage.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 64
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "kube_persistentvolumeclaim_status_phase{job=\"kube-state-metrics\",namespace=~\"$namespace\"}",
+          "legendFormat": "{{persistentvolumeclaim}} / {{phase}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 19,
+      "title": "StatefulSet desired / ready replicas",
+      "description": "No data if this namespace has no StatefulSet.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 72
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "kube_statefulset_replicas{job=\"kube-state-metrics\",namespace=~\"$namespace\"}",
+          "legendFormat": "{{statefulset}} desired",
+          "refId": "A"
+        },
+        {
+          "expr": "kube_statefulset_status_replicas_ready{job=\"kube-state-metrics\",namespace=~\"$namespace\"}",
+          "legendFormat": "{{statefulset}} ready",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 20,
+      "title": "DaemonSet desired / ready Pods",
+      "description": "No data if this namespace has no DaemonSet.",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 72
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-k8s-prometheus"
+      },
+      "targets": [
+        {
+          "expr": "kube_daemonset_status_desired_number_scheduled{job=\"kube-state-metrics\",namespace=~\"$namespace\"}",
+          "legendFormat": "{{daemonset}} desired",
+          "refId": "A"
+        },
+        {
+          "expr": "kube_daemonset_status_number_ready{job=\"kube-state-metrics\",namespace=~\"$namespace\"}",
+          "legendFormat": "{{daemonset}} ready",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      }
+    }
+  ]
+}

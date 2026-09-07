@@ -14,7 +14,7 @@ spec:
       annotations:
         checksum/prometheus-config: {{ include (print $.Template.BasePath "/prometheus-configmap.yaml") . | sha256sum }}
     spec:
-      serviceAccountName: {{ include "production-simulator.fullname" . }}-prometheus
+      serviceAccountName: {{ include "production-simulator.fullname" . }}-prometheus-sa
       containers:
         - name: prometheus
           image: {{ .Values.prometheus.image }}
@@ -28,4 +28,4 @@ spec:
       volumes:
         - name: config
           configMap:
-            name: {{ include "production-simulator.fullname" . }}-prometheus
+            name: {{ include "production-simulator.fullname" . }}-prometheus-config

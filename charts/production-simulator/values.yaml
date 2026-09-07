@@ -20,3 +20,9 @@ resources:
   limits:
     cpu: 500m
     memory: 256Mi
+kubernetesMetrics:
+  enabled: true
+  kubeStateMetricsImage: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.17.0
+  scrapeInterval: 15s
+  # API-server proxy requires cluster-scoped nodes/proxy access for Prometheus.
+  cadvisorEnabled: true
