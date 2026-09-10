@@ -1,5 +1,18 @@
 # Helm + Kubernetes + Grafana Learning Project
 
+## GitHub Actions CI/CD
+
+已加入 PR/main 自动测试构建，以及手动部署到本地 Kubernetes 的工作流。
+首次启用及 Runner 配置见 [CI/CD 说明](.github/CICD.md)。
+
+## IBM DataPower / API Connect 模拟集成
+
+新增 [MuleSoft Anypoint 模拟](ibm-simulator/ANYPOINT.md)，演示 JSON 转换、HTTP 集成流及三组件综合监控。
+
+已提供可选的 API Connect 管理配置服务、DataPower 策略网关与 Grafana 看板。
+支持客户端认证、套餐限流、转发现有 Java API 和 Prometheus 指标。
+启动及验证步骤见 [IBM 模拟集成说明](ibm-simulator/README.md)。
+
 This project is a local learning environment for deploying and observing a Kubernetes workload with Helm, Prometheus, and Grafana.
 
 It includes:
@@ -108,6 +121,17 @@ The Prometheus Deployment includes a checksum of its ConfigMap in its Pod
 template. A change to `prometheus-configmap.yaml` therefore triggers a rolling
 restart automatically, so the new Prometheus Pod starts with the revised scrape
 configuration.
+
+Prometheus stores its TSDB, query log, and scrape-failure log under `/prometheus`
+on a `5Gi` `ReadWriteOnce` PersistentVolumeClaim by default. Change
+`prometheus.persistence` in `values.yaml` to select another StorageClass, size,
+or an existing claim.
+
+The Chart also provisions Prometheus alerting rules for target availability, JVM
+CPU and heap, container memory and CPU throttling, application error rate, and
+average request latency. Configure thresholds under `prometheus.alerting` in
+`values.yaml`. Rules are evaluated by Prometheus; configure Alertmanager before
+using them for external notification delivery.
 
 When updating **Java source**, repeat build/deploy steps 2–3 with a new image tag.
 When updating only Grafana dashboard JSON, the provisioned file is picked up by
@@ -274,6 +298,23 @@ DaemonSet panels can have no data when those resources do not exist; this demo
 does not create them. An absent cAdvisor metric may indicate runtime support is
 missing. Node allocatable capacity is not actual host utilization, and last
 OOMKilled is a retained reason, not a new OOM event counter.
+
+## KubeVela resource topology
+
+See [KubeVela 启动与添加应用](kubevela/_boot.md) for daily startup, VelaUX access,
+read-only adoption of existing applications, and detailed UI steps to create and deploy new applications.
+
+Use the [KubeVela setup guide](kubevela/README.md) to install the control plane,
+adopt this project's Helm release in read-only mode, and inspect its resource tree.
+
+```powershell
+.\kubevela\topology.ps1 -Action Install
+.\kubevela\topology.ps1 -Action Adopt
+.\kubevela\topology.ps1 -Action Status
+```
+
+Helm continues to manage the workloads. Re-run Adopt after adding or removing
+release resources. Optional VelaUX setup is described in the guide.
 
 ## Check Project Status
 

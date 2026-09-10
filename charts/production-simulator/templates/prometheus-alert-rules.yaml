@@ -1,0 +1,78 @@
+{{- if .Values.prometheus.alerting.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "production-simulator.fullname" . }}-prometheus-alert-rules
+  labels:
+    app.kubernetes.io/name: {{ include "production-simulator.name" . }}-prometheus
+data:
+  production-simulator-alerts.yaml: |
+    groups:
+      - name: production-simulator.availability
+        rules:
+          - alert: ProductionSimulatorTargetDown
+            expr: up{job="production-simulator"} == 0
+            for: 2m
+            labels:
+              severity: critical
+              service: checkout-api
+            annotations:
+              summary: "Production simulator target is down"
+              description: "{{`{{ $labels.instance }}`}} has not been scraped successfully for 2 minutes."
+      - name: production-simulator.capacity
+        rules:
+          - alert: ProductionSimulatorHighProcessCPU
+            expr: process_cpu_usage_ratio{job="production-simulator"} > {{ .Values.prometheus.alerting.thresholds.processCpuRatio }}
+            for: 5m
+            labels:
+              severity: warning
+              service: checkout-api
+            annotations:
+              summary: "JVM process CPU is high"
+              description: "{{`{{ $labels.instance }}`}} JVM process CPU has exceeded {{ mulf .Values.prometheus.alerting.thresholds.processCpuRatio 100 }}% for 5 minutes."
+          - alert: ProductionSimulatorHighHeapUsage
+            expr: jvm_memory_heap_used_bytes{job="production-simulator"} / jvm_memory_heap_max_bytes{job="production-simulator"} > {{ .Values.prometheus.alerting.thresholds.heapUsageRatio }}
+            for: 10m
+            labels:
+              severity: warning
+              service: checkout-api
+            annotations:
+              summary: "JVM heap usage is high"
+              description: "{{`{{ $labels.instance }}`}} JVM heap usage has exceeded {{ mulf .Values.prometheus.alerting.thresholds.heapUsageRatio 100 }}% for 10 minutes."
+          - alert: ProductionSimulatorHighContainerMemory
+            expr: container_memory_working_set_bytes{namespace="{{ .Release.Namespace }}",container="app"} / kube_pod_container_resource_limits{namespace="{{ .Release.Namespace }}",container="app",resource="memory",unit="byte"} > {{ .Values.prometheus.alerting.thresholds.containerMemoryLimitRatio }}
+            for: 10m
+            labels:
+              severity: warning
+              service: checkout-api
+            annotations:
+              summary: "Container memory is near its limit"
+              description: "{{`{{ $labels.pod }}`}} is using more than {{ mulf .Values.prometheus.alerting.thresholds.containerMemoryLimitRatio 100 }}% of its memory limit."
+          - alert: ProductionSimulatorHighCPUThrottling
+            expr: sum by (namespace, pod, container) (rate(container_cpu_cfs_throttled_periods_total{namespace="{{ .Release.Namespace }}",container="app"}[5m])) / sum by (namespace, pod, container) (rate(container_cpu_cfs_periods_total{namespace="{{ .Release.Namespace }}",container="app"}[5m])) > {{ .Values.prometheus.alerting.thresholds.cpuThrottlingRatio }}
+            for: 10m
+            labels:
+              severity: warning
+              service: checkout-api
+            annotations:
+              summary: "Container CPU throttling is high"
+              description: "{{`{{ $labels.pod }}`}} has exceeded {{ mulf .Values.prometheus.alerting.thresholds.cpuThrottlingRatio 100 }}% CPU throttling for 10 minutes."
+      - name: production-simulator.service-level
+        rules:
+          - alert: ProductionSimulatorHighErrorRate
+            expr: sum by (service, environment) (rate(application_errors_total{job="production-simulator"}[5m])) / clamp_min(sum by (service, environment) (rate(application_requests_total{job="production-simulator"}[5m])), 0.001) > {{ .Values.prometheus.alerting.thresholds.errorRateRatio }}
+            for: 5m
+            labels:
+              severity: critical
+            annotations:
+              summary: "Application error rate is high"
+              description: "{{`{{ $labels.service }}`}} error rate has exceeded {{ mulf .Values.prometheus.alerting.thresholds.errorRateRatio 100 }}% for 5 minutes."
+          - alert: ProductionSimulatorHighAverageLatency
+            expr: sum by (service, environment) (rate(application_request_duration_ms_sum{job="production-simulator"}[5m])) / clamp_min(sum by (service, environment) (rate(application_request_duration_ms_count{job="production-simulator"}[5m])), 0.001) > {{ .Values.prometheus.alerting.thresholds.averageLatencyMs }}
+            for: 10m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Application average latency is high"
+              description: "{{`{{ $labels.service }}`}} average request latency has exceeded {{ .Values.prometheus.alerting.thresholds.averageLatencyMs }} ms for 10 minutes."
+{{- end }}

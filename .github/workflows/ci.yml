@@ -1,0 +1,54 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: azure/setup-helm@v4.3.0
+        with:
+          version: v3.21.4
+      - name: Test integration chain
+        run: python ibm-simulator/test_integration.py
+      - name: Validate dashboards
+        run: |
+          python - <<'PY'
+          import json, pathlib
+          uids = set()
+          for path in pathlib.Path('grafana/dashboards').glob('*.json'):
+              dashboard = json.loads(path.read_text(encoding='utf-8-sig'))
+              assert dashboard['uid'] not in uids, f'Duplicate uid: {path}'
+              uids.add(dashboard['uid'])
+              assert dashboard['panels'], f'Empty dashboard: {path}'
+          PY
+      - name: Validate Helm feature combinations
+        run: |
+          set -euo pipefail
+          helm lint charts/production-simulator
+          helm template production-simulator charts/production-simulator > /tmp/default.yaml
+          helm lint charts/production-simulator --set ibmSimulator.enabled=true
+          helm template production-simulator charts/production-simulator --set ibmSimulator.enabled=true > /tmp/ibm.yaml
+          helm lint charts/production-simulator --set ibmSimulator.enabled=true --set ibmSimulator.anypointEnabled=true
+          helm template production-simulator charts/production-simulator --set ibmSimulator.enabled=true --set ibmSimulator.anypointEnabled=true > /tmp/full.yaml
+      - name: Validate Compose
+        env:
+          GRAFANA_ADMIN_PASSWORD: ci-validation-only
+        run: docker compose --profile ibm config --quiet
+      - name: Build Java and gateway images
+        run: |
+          set -euo pipefail
+          docker build -t production-simulator:ci demo-app
+          docker build -t ibm-api-simulator:ci ibm-simulator

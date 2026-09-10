@@ -1,4 +1,16 @@
 replicaCount: 2
+ibmSimulator:
+  enabled: false
+  image: ibm-api-simulator:local
+  imagePullPolicy: IfNotPresent
+  clientId: demo-client
+  rateLimit: 10
+  rateWindowSeconds: 60
+  serviceType: LoadBalancer
+  gatewayPort: 18081
+  managementPort: 18082
+  anypointEnabled: false
+  anypointPort: 18083
 image:
   repository: production-simulator
   tag: local
@@ -9,6 +21,22 @@ service:
   nodePort: 30080
 prometheus:
   image: prom/prometheus:v3.5.0
+  alerting:
+    enabled: true
+    thresholds:
+      processCpuRatio: 0.80
+      heapUsageRatio: 0.80
+      errorRateRatio: 0.05
+      averageLatencyMs: 250
+      cpuThrottlingRatio: 0.25
+      containerMemoryLimitRatio: 0.90
+  persistence:
+    enabled: true
+    existingClaim: ""
+    storageClass: standard
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
   service:
     type: LoadBalancer
     port: 19090

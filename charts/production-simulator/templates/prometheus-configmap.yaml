@@ -6,7 +6,23 @@ data:
   prometheus.yml: |
     global:
       scrape_interval: 5s
+      query_log_file: /prometheus/query.log
+      scrape_failure_log_file: /prometheus/scrape-failures.log
+{{- if .Values.prometheus.alerting.enabled }}
+    rule_files:
+      - /etc/prometheus/rules/*.yaml
+{{- end }}
     scrape_configs:
+{{ if .Values.ibmSimulator.enabled }}
+      - job_name: ibm-simulators
+        static_configs:
+          - targets:
+              - '{{ include "production-simulator.fullname" . }}-apic:{{ .Values.ibmSimulator.managementPort }}'
+              - '{{ include "production-simulator.fullname" . }}-datapower:{{ .Values.ibmSimulator.gatewayPort }}'
+{{ if .Values.ibmSimulator.anypointEnabled }}
+              - '{{ include "production-simulator.fullname" . }}-mule:{{ .Values.ibmSimulator.anypointPort }}'
+{{ end }}
+{{ end }}
       - job_name: production-simulator
         metrics_path: /metrics
         kubernetes_sd_configs:

@@ -1,0 +1,129 @@
+{
+  "uid": "ibm-api-simulation",
+  "schemaVersion": 39,
+  "panels": [
+    {
+      "fieldConfig": {
+        "overrides": [],
+        "defaults": {
+          "min": 0
+        }
+      },
+      "gridPos": {
+        "y": 0.0,
+        "x": 0,
+        "w": 12,
+        "h": 8
+      },
+      "title": "Simulator availability",
+      "id": 1,
+      "datasource": {
+        "uid": "local-k8s-prometheus",
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "legendFormat": "{{component}} {{status}}",
+          "refId": "A",
+          "expr": "ibm_simulator_up"
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "fieldConfig": {
+        "overrides": [],
+        "defaults": {
+          "min": 0
+        }
+      },
+      "gridPos": {
+        "y": 0.0,
+        "x": 12,
+        "w": 12,
+        "h": 8
+      },
+      "title": "Gateway requests / second",
+      "id": 2,
+      "datasource": {
+        "uid": "local-k8s-prometheus",
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "legendFormat": "{{component}} {{status}}",
+          "refId": "A",
+          "expr": "sum by (status) (rate(ibm_simulator_requests_total{component=\"datapower\"}[5m]))"
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "fieldConfig": {
+        "overrides": [],
+        "defaults": {
+          "min": 0
+        }
+      },
+      "gridPos": {
+        "y": 8.0,
+        "x": 0,
+        "w": 12,
+        "h": 8
+      },
+      "title": "Gateway average latency (seconds)",
+      "id": 3,
+      "datasource": {
+        "uid": "local-k8s-prometheus",
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "legendFormat": "{{component}} {{status}}",
+          "refId": "A",
+          "expr": "sum(rate(ibm_simulator_request_duration_seconds_sum{component=\"datapower\"}[5m])) / sum(rate(ibm_simulator_request_duration_seconds_count{component=\"datapower\"}[5m]))"
+        }
+      ],
+      "type": "timeseries"
+    },
+    {
+      "fieldConfig": {
+        "overrides": [],
+        "defaults": {
+          "min": 0
+        }
+      },
+      "gridPos": {
+        "y": 8.0,
+        "x": 12,
+        "w": 12,
+        "h": 8
+      },
+      "title": "Rejected requests / second",
+      "id": 4,
+      "datasource": {
+        "uid": "local-k8s-prometheus",
+        "type": "prometheus"
+      },
+      "targets": [
+        {
+          "legendFormat": "{{component}} {{status}}",
+          "refId": "A",
+          "expr": "sum by (status) (rate(ibm_simulator_requests_total{component=\"datapower\",status=~\"401|429\"}[5m]))"
+        }
+      ],
+      "type": "timeseries"
+    }
+  ],
+  "time": {
+    "from": "now-15m",
+    "to": "now"
+  },
+  "refresh": "5s",
+  "title": "IBM API Connect & DataPower Simulation",
+  "version": 1,
+  "tags": [
+    "simulation",
+    "ibm"
+  ]
+}

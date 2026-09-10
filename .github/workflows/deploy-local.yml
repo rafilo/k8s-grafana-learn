@@ -1,0 +1,35 @@
+name: Deploy local Kubernetes
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: local-kubernetes-deploy
+  cancel-in-progress: false
+jobs:
+  ci:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/ci.yml
+  deploy:
+    needs: ci
+    if: github.ref == 'refs/heads/main'
+    environment: local-kubernetes
+    runs-on: [self-hosted, Windows, X64, grafana-local]
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Deploy tested revision
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+          GRAFANA_PROJECT_PATH: ${{ vars.GRAFANA_PROJECT_PATH }}
+        run: ./scripts/deploy-local.ps1 -ImageTag $env:DEPLOY_SHA -GrafanaProjectPath $env:GRAFANA_PROJECT_PATH
+      - name: Deployment diagnostics
+        if: failure()
+        run: |
+          kubectl --context docker-desktop get pods,services -n monitoring-demo
+          kubectl --context docker-desktop get events -n monitoring-demo --sort-by=.lastTimestamp

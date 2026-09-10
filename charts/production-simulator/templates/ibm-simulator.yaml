@@ -1,0 +1,76 @@
+{{- if .Values.ibmSimulator.enabled }}
+{{- $root := . }}
+{{- $roles := list "apic" "datapower" }}
+{{- if .Values.ibmSimulator.anypointEnabled }}
+{{- $roles = append $roles "mule" }}
+{{- end }}
+{{- range $role := $roles }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "production-simulator.fullname" $root }}-{{ $role }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "production-simulator.fullname" $root }}-{{ $role }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "production-simulator.fullname" $root }}-{{ $role }}
+    spec:
+      containers:
+        - name: {{ $role }}
+          image: {{ $root.Values.ibmSimulator.image | quote }}
+          imagePullPolicy: {{ $root.Values.ibmSimulator.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: ROLE
+              value: {{ $role | quote }}
+            - name: CONTROL_URL
+              value: http://{{ include "production-simulator.fullname" $root }}-apic:{{ $root.Values.ibmSimulator.managementPort }}
+            - name: BACKEND_URL
+{{- if and (eq $role "datapower") $root.Values.ibmSimulator.anypointEnabled }}
+              value: http://{{ include "production-simulator.fullname" $root }}-mule:{{ $root.Values.ibmSimulator.anypointPort }}
+{{- else }}
+              value: http://{{ include "production-simulator.fullname" $root }}:{{ $root.Values.service.port }}
+{{- end }}
+            - name: CLIENT_ID
+              value: {{ $root.Values.ibmSimulator.clientId | quote }}
+            - name: RATE_LIMIT
+              value: {{ $root.Values.ibmSimulator.rateLimit | quote }}
+            - name: RATE_WINDOW_SECONDS
+              value: {{ $root.Values.ibmSimulator.rateWindowSeconds | quote }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "production-simulator.fullname" $root }}-{{ $role }}
+spec:
+  type: {{ $root.Values.ibmSimulator.serviceType }}
+  selector:
+    app: {{ include "production-simulator.fullname" $root }}-{{ $role }}
+  ports:
+    - name: http
+      port: {{ if eq $role "apic" }}{{ $root.Values.ibmSimulator.managementPort }}{{ else if eq $role "mule" }}{{ $root.Values.ibmSimulator.anypointPort }}{{ else }}{{ $root.Values.ibmSimulator.gatewayPort }}{{ end }}
+      targetPort: http
+{{- end }}
+{{- end }}

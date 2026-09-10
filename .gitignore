@@ -1,2 +1,4 @@
 .env
+.tools/
+kubevela/generated/
 project-learning.md

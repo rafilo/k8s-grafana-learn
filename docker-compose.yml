@@ -1,4 +1,35 @@
 services:
+  anypoint-simulator:
+    profiles: [ibm]
+    build: ./ibm-simulator
+    restart: unless-stopped
+    environment:
+      ROLE: mule
+      BACKEND_URL: http://host.docker.internal:18080
+    ports:
+      - "127.0.0.1:18083:8080"
+  apic-simulator:
+    profiles: [ibm]
+    build: ./ibm-simulator
+    restart: unless-stopped
+    environment:
+      ROLE: apic
+      RATE_LIMIT: "10"
+      RATE_WINDOW_SECONDS: "60"
+    ports:
+      - "127.0.0.1:18082:8080"
+  datapower-simulator:
+    profiles: [ibm]
+    build: ./ibm-simulator
+    restart: unless-stopped
+    depends_on: [apic-simulator, anypoint-simulator]
+    environment:
+      ROLE: datapower
+      CONTROL_URL: http://apic-simulator:8080
+      BACKEND_URL: http://anypoint-simulator:8080
+      CLIENT_ID: demo-client
+    ports:
+      - "127.0.0.1:18081:8080"
   grafana:
     image: grafana/grafana-oss:latest
     container_name: grafana
